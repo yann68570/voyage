@@ -108,27 +108,6 @@ function SettingsForm({
     setPreviewUrl(URL.createObjectURL(file));
   };
 
-  const handleSendVerification = async () => {
-    try {
-      const { error } = await authClient.sendVerificationEmail({
-        email: session.user.email,
-        callbackURL: "/settings",
-      });
-
-      if (error) {
-        toast.error("Erreur : " + error.message);
-        return;
-      }
-
-      toast.success(
-        "E-mail de vérification envoyé ! Vérifiez votre boîte de réception.",
-      );
-    } catch (err) {
-      console.error(err);
-      toast.error("Impossible d'envoyer l'e-mail de vérification.");
-    }
-  };
-
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -261,23 +240,8 @@ function SettingsForm({
           <label className="text-sm text-gray-500">Email</label>
           <div className="flex items-center gap-3 mt-1">
             <p className="font-medium text-gray-800">{session.user.email}</p>
-
-            {session.user.emailVerified ? (
-              <span className="text-xs bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full font-medium">
-                ✓ Vérifié
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSendVerification}
-                className="text-xs text-amber-600 underline hover:text-amber-700 font-medium"
-              >
-                Vérifier l&apos;email
-              </button>
-            )}
           </div>
         </div>
-
         {/* Prénom (Lecture seule) */}
         <div>
           <label className="block text-sm font-medium mb-1">Prénom</label>
