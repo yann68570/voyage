@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Vos routes publiques avec /signin et /signup
-const publicRoutes = [
-  "/",
-  "/signin",
-  "/signup",
-  "/verify-email",
-  "/verify-email-sent",
-];
+const publicRoutes = ["/", "/signin", "/signup"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

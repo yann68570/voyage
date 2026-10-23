@@ -18,26 +18,7 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true, // Mettez à true si vous voulez forcer la vérification
   },
-
-  // 2. Configuration unique pour l'envoi d'e-mails via Better Infra
-  emailVerification: {
-    sendOnSignUp: true,
-    async sendVerificationEmail({ user, url }) {
-      await sendEmail({
-        template: "verify-email",
-        to: user.email,
-        variables: {
-          verificationUrl: url,
-          userEmail: user.email,
-          userName: user.name,
-          appName: "voyage",
-        },
-      });
-    },
-  },
-
   user: {
     additionalFields: {
       role: {

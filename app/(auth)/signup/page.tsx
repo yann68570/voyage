@@ -49,7 +49,7 @@ export default function Signup() {
       return;
     }
 
-    router.push("/verify-email-sent");
+    router.push("/settings");
   };
 
   return (
