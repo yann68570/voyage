@@ -3,13 +3,19 @@
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { toast } from "sonner";
 
 export default function GoogleSignInButton() {
   const handleGoogleSignIn = async () => {
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/settings", // Page où l'utilisateur est redirigé après connexion
-    });
+    try {
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/settings",
+      });
+      toast.success("Redirection vers Google...");
+    } catch (err) {
+      toast.error("erreur lors de la connexion");
+    }
   };
 
   return (

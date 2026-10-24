@@ -49,11 +49,9 @@ function SettingsForm({
   session: UserSession;
   router: ReturnType<typeof useRouter>;
 }) {
-  // Extraction sécurisée : vérifie les champs personnalisés ou extrait du nom global
   const fullNameParts = (session.user.name || "").trim().split(" ");
   const firstName = session.user.firstName || fullNameParts[0] || "";
 
-  // Si lastName n'est pas dans session.user, on prend tout ce qui vient après le premier mot du nom complet
   const initialLastName =
     session.user.lastName || fullNameParts.slice(1).join(" ") || "";
 
@@ -112,15 +110,10 @@ function SettingsForm({
     e.preventDefault();
 
     const lastNameToSubmit = lastName.trim();
-    const usernameToSubmit = username.trim() || session.user.username || "";
+    const usernameToSubmit = username.trim();
 
     if (!lastNameToSubmit) {
       toast.error("Le nom ne peut pas être vide.");
-      return;
-    }
-
-    if (!usernameToSubmit) {
-      toast.error("Le pseudo est obligatoire.");
       return;
     }
 
@@ -163,12 +156,25 @@ function SettingsForm({
 
       const fullUnifiedName = `${firstName} ${lastNameToSubmit}`.trim();
 
-      const { error } = await authClient.updateUser({
+      // On prépare l'objet de mise à jour de base
+      const updateData: {
+        name: string;
+        firstName: string;
+        lastName: string;
+        username?: string;
+      } = {
         name: fullUnifiedName,
         firstName: firstName,
         lastName: lastNameToSubmit,
-        username: usernameToSubmit,
-      });
+      };
+
+      // ON N'ENVOIE LE PSEUDO QUE S'IL EST REMPLI ET VALIDE
+      // (Si l'utilisateur l'a effacé, on ne l'inclut pas pour éviter l'erreur "Username is too short")
+      if (usernameToSubmit.length > 0) {
+        updateData.username = usernameToSubmit;
+      }
+
+      const { error } = await authClient.updateUser(updateData);
 
       if (error) {
         toast.error("Erreur lors de la mise à jour : " + error.message);
@@ -242,7 +248,7 @@ function SettingsForm({
             <p className="font-medium text-gray-800">{session.user.email}</p>
           </div>
         </div>
-        {/* Prénom (Lecture seule) */}
+
         <div>
           <label className="block text-sm font-medium mb-1">Prénom</label>
           <div className="p-2 border rounded-md bg-muted text-gray-600 text-sm">
@@ -250,7 +256,6 @@ function SettingsForm({
           </div>
         </div>
 
-        {/* Nom (Seul champ modifiable) */}
         <div>
           <label className="block text-sm font-medium mb-1">Nom</label>
           <Input
@@ -263,12 +268,15 @@ function SettingsForm({
 
         <div>
           <label className="block text-sm font-medium mb-1">
-            Pseudo unique (@)
+            Pseudo unique (@){" "}
+            <span className="text-gray-400 text-xs font-normal">
+              (Optionnel)
+            </span>
           </label>
           <Input
             type="text"
             value={username}
-            placeholder={session.user.username || ""}
+            placeholder="Votre pseudo (facultatif)"
             onChange={(e) => {
               setUsername(e.target.value);
               checkUsernameAvailability(e.target.value);
