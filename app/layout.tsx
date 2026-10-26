@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/navbar";
 import { Toaster } from "@/components/ui/sonner";
+import { ConditionalNavbar } from "@/components/layout/conditional-navbar";
+import { Suspense } from "react";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${outfit.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
-        <Navbar />
+        <Suspense>
+          <ConditionalNavbar />
+        </Suspense>
         {children}
         <Toaster position="top-center" richColors />
       </body>

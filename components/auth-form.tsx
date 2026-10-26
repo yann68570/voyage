@@ -52,7 +52,7 @@ export function AuthForm({ type }: AuthFormProps) {
           toast.error(result.error.message ?? "Erreur lors de l'inscription");
         } else {
           toast.success("Compte créé avec succès !");
-          router.push("/settings");
+          router.push("/post");
           router.refresh();
         }
       } else {
@@ -65,7 +65,7 @@ export function AuthForm({ type }: AuthFormProps) {
           toast.error(result.error.message ?? "Erreur lors de la connexion");
         } else {
           toast.success("Connexion réussie !");
-          router.push("/settings");
+          router.push("/post");
           router.refresh();
         }
       }

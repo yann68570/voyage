@@ -10,7 +10,7 @@ export default function GoogleSignInButton() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/settings",
+        callbackURL: "/post",
       });
       toast.success("Redirection vers Google...");
     } catch (err) {
