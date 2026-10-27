@@ -2,33 +2,24 @@
 
 import clientPromise from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { headers, cookies } from "next/headers";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { ObjectId } from "mongodb";
-
-interface CreatePostInput {
-  content: string;
-  imageUrl: string;
-}
 
 interface ActionResult {
   success: boolean;
   error?: string;
 }
 
-// 1. Créer un post
-export async function createPost(data: CreatePostInput): Promise<ActionResult> {
+// Créer un post
+export async function createPost(data: {
+  content: string;
+  imageUrl: string;
+}): Promise<ActionResult> {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session || !session.user) {
-      return {
-        success: false,
-        error: "Vous devez être connecté pour publier.",
-      };
-    }
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || !session.user)
+      return { success: false, error: "Non connecté." };
 
     if (!data.content.trim() && !data.imageUrl) {
       return {
@@ -49,6 +40,7 @@ export async function createPost(data: CreatePostInput): Promise<ActionResult> {
       authorImage: session.user.image || null,
       likes: [],
       views: 0,
+      viewedBy: [],
       comments: [],
       createdAt: new Date(),
     });
@@ -56,69 +48,59 @@ export async function createPost(data: CreatePostInput): Promise<ActionResult> {
     revalidatePath("/post");
     return { success: true };
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Erreur serveur inconnue";
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erreur serveur",
+    };
   }
 }
 
-// 2. Ajouter un commentaire
-export async function addComment(
-  postId: string,
-  content: string,
-): Promise<ActionResult> {
+// Supprimer un post complet
+export async function deletePost(postId: string): Promise<ActionResult> {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || !session.user)
+      return { success: false, error: "Non connecté." };
 
-    if (!session || !session.user) {
-      return {
-        success: false,
-        error: "Vous devez être connecté pour commenter.",
-      };
-    }
-
-    if (!content.trim()) {
-      return { success: false, error: "Le commentaire ne peut pas être vide." };
-    }
+    if (!ObjectId.isValid(postId))
+      return { success: false, error: "ID invalide." };
 
     const client = await clientPromise;
     const db = client.db();
 
-    const newComment = {
-      id: new ObjectId().toString(),
-      authorId: session.user.id,
-      authorName: session.user.name || "Utilisateur",
-      authorImage: session.user.image || null,
-      content: content.trim(),
-      createdAt: new Date(),
-    };
+    const post = await db
+      .collection("posts")
+      .findOne({ _id: new ObjectId(postId) });
+    if (!post) return { success: false, error: "Post introuvable." };
 
-    await db.collection("posts").updateOne({ _id: new ObjectId(postId) }, {
-      $push: { comments: newComment },
-    } as Record<string, unknown>);
+    if (post.authorId !== session.user.id) {
+      return {
+        success: false,
+        error: "Vous n'avez pas le droit de supprimer ce post.",
+      };
+    }
 
-    revalidatePath(`/post/${postId}`);
+    await db.collection("posts").deleteOne({ _id: new ObjectId(postId) });
+
     revalidatePath("/post");
     return { success: true };
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Erreur serveur inconnue";
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erreur serveur",
+    };
   }
 }
 
-// 3. Liker / Unliker un post
+// Liker / Unliker un post
 export async function toggleLike(postId: string): Promise<ActionResult> {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || !session.user)
+      return { success: false, error: "Non connecté." };
 
-    if (!session || !session.user) {
-      return { success: false, error: "Vous devez être connecté pour liker." };
-    }
+    if (!ObjectId.isValid(postId))
+      return { success: false, error: "ID invalide." };
 
     const client = await clientPromise;
     const db = client.db();
@@ -133,57 +115,119 @@ export async function toggleLike(postId: string): Promise<ActionResult> {
     const hasLiked = likes.includes(userId);
 
     if (hasLiked) {
-      await db.collection("posts").updateOne({ _id: new ObjectId(postId) }, {
-        $pull: { likes: userId },
-      } as Record<string, unknown>);
+      await db
+        .collection("posts")
+        .updateOne({ _id: new ObjectId(postId) }, {
+          $pull: { likes: userId },
+        } as Record<string, unknown>);
     } else {
-      await db.collection("posts").updateOne({ _id: new ObjectId(postId) }, {
-        $push: { likes: userId },
-      } as Record<string, unknown>);
+      await db
+        .collection("posts")
+        .updateOne({ _id: new ObjectId(postId) }, {
+          $push: { likes: userId },
+        } as Record<string, unknown>);
     }
 
     revalidatePath("/post");
     revalidatePath(`/post/${postId}`);
     return { success: true };
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Erreur serveur inconnue";
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erreur serveur",
+    };
   }
 }
 
-// 4. Incrémenter les vues avec protection par cookie anti-spam (valable 24h)
-// export async function incrementPostView(postId: string): Promise<void> {
-//   if (!ObjectId.isValid(postId)) return;
+// Ajouter un commentaire
+export async function addComment(
+  postId: string,
+  content: string,
+): Promise<ActionResult> {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || !session.user)
+      return { success: false, error: "Non connecté." };
+    if (!content.trim()) return { success: false, error: "Commentaire vide." };
 
-//   try {
-//     const session = await auth.api.getSession({
-//       headers: await headers(),
-//     });
+    if (!ObjectId.isValid(postId))
+      return { success: false, error: "ID invalide." };
 
-//     // Optionnel : Si vous voulez aussi compter les visiteurs non connectés,
-//     // vous pouvez utiliser un identifiant de session générique ou leur IP,
-//     // mais ici on s'appuie sur l'utilisateur connecté ou une clé unique.
-//     const userId = session?.user?.id || "anonymous";
+    const client = await clientPromise;
+    const db = client.db();
 
-//     const client = await clientPromise;
-//     const db = client.db();
+    const newComment = {
+      id: new ObjectId().toString(),
+      authorId: session.user.id,
+      authorName: session.user.name || "Utilisateur",
+      authorImage: session.user.image || null,
+      content: content.trim(),
+      createdAt: new Date(),
+    };
 
-//     // Vérifie si l'utilisateur a déjà vu ce post
-//     const post = await db.collection("posts").findOne({
-//       _id: new ObjectId(postId),
-//       viewedBy: userId,
-//     });
+    await db
+      .collection("posts")
+      .updateOne({ _id: new ObjectId(postId) }, {
+        $push: { comments: newComment },
+      } as Record<string, unknown>);
 
-//     // S'il l'a déjà vu, on ne fait rien
-//     if (post) return;
+    revalidatePath(`/post/${postId}`);
+    return { success: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erreur serveur",
+    };
+  }
+}
 
-//     // Sinon, on incrémente le compteur et on ajoute l'ID/visiteur dans le tableau
-//     await db.collection("posts").updateOne({ _id: new ObjectId(postId) }, {
-//       $inc: { views: 1 },
-//       $push: { viewedBy: userId },
-//     } as Record<string, unknown>);
-//   } catch (err) {
-//     console.error("Erreur increment view:", err);
-//   }
-// }
+// Supprimer un commentaire
+export async function deleteComment(
+  postId: string,
+  commentId: string,
+): Promise<ActionResult> {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || !session.user)
+      return { success: false, error: "Non connecté." };
+
+    if (!ObjectId.isValid(postId))
+      return { success: false, error: "ID invalide." };
+
+    const client = await clientPromise;
+    const db = client.db();
+
+    const post = await db
+      .collection("posts")
+      .findOne({ _id: new ObjectId(postId) });
+    if (!post) return { success: false, error: "Post introuvable." };
+
+    const comments = Array.isArray(post.comments) ? post.comments : [];
+    const comment = comments.find(
+      (c: { id: string; authorId: string }) => c.id === commentId,
+    );
+
+    if (!comment) return { success: false, error: "Commentaire introuvable." };
+
+    if (
+      comment.authorId !== session.user.id &&
+      post.authorId !== session.user.id
+    ) {
+      return { success: false, error: "Action non autorisée." };
+    }
+
+    await db
+      .collection("posts")
+      .updateOne({ _id: new ObjectId(postId) }, {
+        $pull: { comments: { id: commentId } },
+      } as Record<string, unknown>);
+
+    revalidatePath(`/post/${postId}`);
+    return { success: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erreur serveur",
+    };
+  }
+}

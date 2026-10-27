@@ -1,13 +1,16 @@
 import clientPromise from "@/lib/db";
 import { connection } from "next/server";
-import Image from "next/image";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { Suspense } from "react";
+import { PostCard } from "@/components/posts/post-card";
 
 interface Post {
   _id: string;
   content: string;
   imageUrl?: string;
+  authorId: string;
   authorName: string;
   authorUsername?: string;
   authorImage?: string;
@@ -31,6 +34,7 @@ async function getPosts(): Promise<Post[]> {
       _id: p._id.toString(),
       content: p.content,
       imageUrl: p.imageUrl || undefined,
+      authorId: p.authorId,
       authorName: p.authorName || "Anonyme",
       authorUsername: p.authorUsername || undefined,
       authorImage: p.authorImage || undefined,
@@ -47,7 +51,11 @@ async function getPosts(): Promise<Post[]> {
 }
 
 async function PostsList() {
-  await connection(); // <--- Indique à Next.js que cette partie est dynamique
+  await connection();
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  const currentUserId = session?.user?.id;
+
   const posts = await getPosts();
 
   if (posts.length === 0) {
@@ -63,73 +71,12 @@ async function PostsList() {
   return (
     <div className="space-y-6">
       {posts.map((post) => (
-        <article
+        <PostCard
           key={post._id}
-          className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden space-y-4 p-5 hover:border-gray-200 transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {post.authorImage ? (
-                <Image
-                  src={post.authorImage}
-                  alt={post.authorName}
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover w-10 h-10"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-semibold text-sm">
-                  {post.authorName[0]}
-                </div>
-              )}
-              <div>
-                <h3 className="font-semibold text-gray-800 text-sm">
-                  {post.authorName}
-                </h3>
-                <p className="text-xs text-gray-400">
-                  {post.authorUsername ? `@${post.authorUsername} • ` : ""}
-                  {new Date(post.createdAt).toLocaleDateString("fr-FR", {
-                    day: "numeric",
-                    month: "long",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {post.content && (
-            <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
-              {post.content}
-            </p>
-          )}
-
-          {post.imageUrl && (
-            <div className="relative w-full h-80 rounded-lg overflow-hidden bg-gray-50">
-              <Image
-                src={post.imageUrl}
-                alt="Image du post"
-                fill
-                className="object-cover"
-              />
-            </div>
-          )}
-
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-50">
-            <div className="flex items-center gap-4">
-              <span>❤️ {post.likes.length} J&apos;aime</span>
-              <span>💬 {post.commentsCount} commentaires</span>
-              <span>👁️ {post.views} vues</span>
-            </div>
-            <Link
-              href={`/post/${post._id}`}
-              className="text-blue-600 font-medium hover:underline"
-            >
-              Voir les détails →
-            </Link>
-          </div>
-        </article>
+          post={post}
+          currentUserId={currentUserId}
+          isDetailView={false}
+        />
       ))}
     </div>
   );
@@ -153,7 +100,7 @@ export default function PostsPage() {
       <Suspense
         fallback={
           <div className="text-center py-12 text-gray-400">
-            Chargement du fil d&apos;actualité...
+            Chargement du fil...
           </div>
         }
       >
