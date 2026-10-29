@@ -1,7 +1,7 @@
 import clientPromise from "@/lib/db";
 import { connection } from "next/server";
-import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 import { ObjectId } from "mongodb";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,72 +10,75 @@ import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
 import { PostCard } from "@/components/posts/post-card";
 import { DeleteCommentDialog } from "@/components/comments/delete-comment-dialog";
+import { Post, Comment } from "@/types";
 
-interface Comment {
-  id: string;
-  authorId: string;
-  authorName: string;
-  authorImage?: string;
-  content: string;
-  createdAt: string;
-}
-
-interface Post {
+interface ExtendedPost extends Omit<Post, "_id"> {
   _id: string;
-  content: string;
-  imageUrl?: string;
-  authorId: string;
-  authorName: string;
-  authorUsername?: string;
-  authorImage?: string;
-  likes: string[];
+  commentsCount: number;
   views: number;
-  comments: Comment[];
-  createdAt: string;
+  imageUrl?: string;
 }
 
-async function getPostAndIncrementViews(id: string): Promise<Post | null> {
+interface ExtendedComment extends Omit<Comment, "_id" | "postId"> {
+  _id: string;
+  postId: string;
+}
+
+async function getPostDetails(
+  id: string,
+): Promise<{ post: ExtendedPost; comments: ExtendedComment[] } | null> {
   if (!ObjectId.isValid(id)) return null;
 
   try {
     const client = await clientPromise;
     const db = client.db();
-    const headersList = await headers();
+    const objectId = new ObjectId(id);
 
-    const isPrefetch =
-      headersList.get("next-router-prefetch") === "1" ||
-      headersList.get("purpose") === "prefetch";
+    // Incrémentation des vues à chaque consultation de la page détail
+    await db
+      .collection("posts")
+      .updateOne({ _id: objectId }, { $inc: { views: 1 } });
 
-    if (!isPrefetch) {
-      const session = await auth.api.getSession({ headers: headersList });
-      const userId = session?.user?.id || "anonymous";
+    const postDoc = await db.collection("posts").findOne({ _id: objectId });
+    if (!postDoc) return null;
 
-      await db
-        .collection("posts")
-        .updateOne({ _id: new ObjectId(id), viewedBy: { $ne: userId } }, {
-          $inc: { views: 1 },
-          $push: { viewedBy: userId },
-        } as Record<string, unknown>);
-    }
+    const commentDocs = await db
+      .collection("comments")
+      .find({ postId: objectId })
+      .sort({ createdAt: -1 })
+      .toArray();
 
-    const p = await db.collection("posts").findOne({ _id: new ObjectId(id) });
-    if (!p) return null;
+    const comments: ExtendedComment[] = commentDocs.map((c) => ({
+      _id: c._id.toString(),
+      postId: c.postId.toString(),
+      authorId: c.authorId,
+      authorName: c.authorName || "Anonyme",
+      authorImage: c.authorImage || undefined,
+      content: c.content,
+      likes: Array.isArray(c.likes) ? c.likes : [],
+      createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
+    }));
 
-    return {
-      _id: p._id.toString(),
-      content: p.content,
-      imageUrl: p.imageUrl || undefined,
-      authorId: p.authorId,
-      authorName: p.authorName || "Anonyme",
-      authorUsername: p.authorUsername || undefined,
-      authorImage: p.authorImage || undefined,
-      likes: Array.isArray(p.likes) ? p.likes : [],
-      views: typeof p.views === "number" ? p.views : 0,
-      comments: Array.isArray(p.comments) ? p.comments : [],
-      createdAt: p.createdAt
-        ? new Date(p.createdAt).toISOString()
-        : new Date().toISOString(),
+    const imagesList = Array.isArray(postDoc.images) ? postDoc.images : [];
+
+    const post: ExtendedPost = {
+      _id: postDoc._id.toString(),
+      title: postDoc.title || "",
+      content: postDoc.content,
+      destination: postDoc.destination || "",
+      imageUrl:
+        postDoc.imageUrl || (imagesList.length > 0 ? imagesList[0] : undefined),
+      images: imagesList,
+      authorId: postDoc.authorId,
+      authorName: postDoc.authorName || "Anonyme",
+      authorImage: postDoc.authorImage || undefined,
+      likes: Array.isArray(postDoc.likes) ? postDoc.likes : [],
+      views: typeof postDoc.views === "number" ? postDoc.views + 1 : 1,
+      commentsCount: comments.length,
+      createdAt: postDoc.createdAt ? new Date(postDoc.createdAt) : new Date(),
     };
+
+    return { post, comments };
   } catch {
     return null;
   }
@@ -88,12 +91,14 @@ type PageProps = {
 async function PostDetailContent({ params }: PageProps) {
   await connection();
   const resolvedParams = await params;
-  const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList });
+
+  const session = await auth.api.getSession({ headers: await headers() });
   const currentUserId = session?.user?.id;
 
-  const post = await getPostAndIncrementViews(resolvedParams.id);
-  if (!post) notFound();
+  const data = await getPostDetails(resolvedParams.id);
+  if (!data) notFound();
+
+  const { post, comments } = data;
 
   const handleCommentAction = async (formData: FormData) => {
     "use server";
@@ -110,10 +115,7 @@ async function PostDetailContent({ params }: PageProps) {
       </Link>
 
       <PostCard
-        post={{
-          ...post,
-          commentsCount: post.comments.length,
-        }}
+        post={post}
         currentUserId={currentUserId}
         isDetailView={true}
         onDeleteRedirect="/post"
@@ -121,7 +123,7 @@ async function PostDetailContent({ params }: PageProps) {
 
       <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
         <h3 className="font-bold text-gray-900">
-          Commentaires ({post.comments.length})
+          Commentaires ({comments.length})
         </h3>
 
         <form action={handleCommentAction} className="space-y-3">
@@ -138,19 +140,19 @@ async function PostDetailContent({ params }: PageProps) {
         </form>
 
         <div className="space-y-4 pt-2">
-          {post.comments.length === 0 ? (
+          {comments.length === 0 ? (
             <p className="text-sm text-gray-400 italic">
               Soyez le premier à commenter ce post !
             </p>
           ) : (
-            post.comments.map((comment: Comment) => {
+            comments.map((comment) => {
               const canDeleteComment =
                 currentUserId === comment.authorId ||
                 currentUserId === post.authorId;
 
               return (
                 <div
-                  key={comment.id}
+                  key={comment._id}
                   className="p-4 bg-gray-50 rounded-lg space-y-2"
                 >
                   <div className="flex items-center justify-between">
@@ -172,7 +174,7 @@ async function PostDetailContent({ params }: PageProps) {
                       {canDeleteComment && (
                         <DeleteCommentDialog
                           postId={post._id}
-                          commentId={comment.id}
+                          commentId={comment._id}
                         />
                       )}
                     </div>

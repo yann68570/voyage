@@ -3,231 +3,172 @@
 import clientPromise from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { ObjectId, Document } from "mongodb";
 import { revalidatePath } from "next/cache";
-import { ObjectId } from "mongodb";
 
-interface ActionResult {
-  success: boolean;
-  error?: string;
+interface PostPayload {
+  title?: string;
+  content?: string;
+  destination?: string;
+  imageUrl?: string;
 }
 
-// Créer un post
-export async function createPost(data: {
-  content: string;
-  imageUrl: string;
-}): Promise<ActionResult> {
+type CreatePostInput = FormData | PostPayload;
+
+export async function createPost(input: CreatePostInput) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || !session.user)
-      return { success: false, error: "Non connecté." };
+    if (!session?.user) {
+      return { success: false, error: "Non autorisé" };
+    }
 
-    if (!data.content.trim() && !data.imageUrl) {
-      return {
-        success: false,
-        error: "Le post doit contenir du texte ou une image.",
-      };
+    let title = "";
+    let content = "";
+    let destination = "";
+    let imageUrl = "";
+
+    // Utilisation de "instanceof FormData" pour un narrowing strict et typé par TypeScript
+    if (input instanceof FormData) {
+      title = input.get("title")?.toString() || "";
+      content = input.get("content")?.toString() || "";
+      destination = input.get("destination")?.toString() || "";
+      imageUrl = input.get("imageUrl")?.toString() || "";
+    } else {
+      title = input.title || "";
+      content = input.content || "";
+      destination = input.destination || "";
+      imageUrl = input.imageUrl || "";
     }
 
     const client = await clientPromise;
     const db = client.db();
 
     await db.collection("posts").insertOne({
-      content: data.content.trim(),
-      imageUrl: data.imageUrl,
       authorId: session.user.id,
-      authorName: session.user.name || "Utilisateur",
-      authorUsername: session.user.username || null,
-      authorImage: session.user.image || null,
+      authorName: session.user.name || "Anonyme",
+      authorImage: session.user.image || undefined,
+      title,
+      content,
+      destination,
+      images: imageUrl ? [imageUrl] : [],
       likes: [],
-      views: 0,
-      viewedBy: [],
-      comments: [],
       createdAt: new Date(),
     });
 
     revalidatePath("/post");
+    revalidatePath("/post/new");
+
     return { success: true };
   } catch (err: unknown) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Erreur serveur",
-    };
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Erreur serveur lors de la création.";
+    return { success: false, error: message };
   }
 }
 
-// Supprimer un post complet
-export async function deletePost(postId: string): Promise<ActionResult> {
-  try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || !session.user)
-      return { success: false, error: "Non connecté." };
+export async function deletePost(postId: string) {
+  if (!ObjectId.isValid(postId)) return;
 
-    if (!ObjectId.isValid(postId))
-      return { success: false, error: "ID invalide." };
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) throw new Error("Non autorisé");
 
-    const client = await clientPromise;
-    const db = client.db();
+  const client = await clientPromise;
+  const db = client.db();
+  const objectId = new ObjectId(postId);
 
-    const post = await db
-      .collection("posts")
-      .findOne({ _id: new ObjectId(postId) });
-    if (!post) return { success: false, error: "Post introuvable." };
+  const post = await db.collection("posts").findOne({ _id: objectId });
+  if (!post || post.authorId !== session.user.id)
+    throw new Error("Action non autorisée");
 
-    if (post.authorId !== session.user.id) {
-      return {
-        success: false,
-        error: "Vous n'avez pas le droit de supprimer ce post.",
-      };
-    }
+  await db.collection("posts").deleteOne({ _id: objectId });
+  await db.collection("comments").deleteMany({ postId: objectId });
 
-    await db.collection("posts").deleteOne({ _id: new ObjectId(postId) });
-
-    revalidatePath("/post");
-    return { success: true };
-  } catch (err: unknown) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Erreur serveur",
-    };
-  }
+  revalidatePath("/post");
 }
 
-// Liker / Unliker un post
-export async function toggleLike(postId: string): Promise<ActionResult> {
-  try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || !session.user)
-      return { success: false, error: "Non connecté." };
+export async function toggleLike(postId: string) {
+  if (!ObjectId.isValid(postId)) return;
 
-    if (!ObjectId.isValid(postId))
-      return { success: false, error: "ID invalide." };
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) throw new Error("Non autorisé");
 
-    const client = await clientPromise;
-    const db = client.db();
-    const userId = session.user.id;
+  const userId = session.user.id;
+  const client = await clientPromise;
+  const db = client.db();
+  const objectId = new ObjectId(postId);
 
-    const post = await db
-      .collection("posts")
-      .findOne({ _id: new ObjectId(postId) });
-    if (!post) return { success: false, error: "Post introuvable." };
+  const post = await db.collection("posts").findOne({ _id: objectId });
+  if (!post) return;
 
-    const likes: string[] = Array.isArray(post.likes) ? post.likes : [];
-    const hasLiked = likes.includes(userId);
+  const likes: string[] = Array.isArray(post.likes) ? post.likes : [];
+  const hasLiked = likes.includes(userId);
 
-    if (hasLiked) {
-      await db
-        .collection("posts")
-        .updateOne({ _id: new ObjectId(postId) }, {
-          $pull: { likes: userId },
-        } as Record<string, unknown>);
-    } else {
-      await db
-        .collection("posts")
-        .updateOne({ _id: new ObjectId(postId) }, {
-          $push: { likes: userId },
-        } as Record<string, unknown>);
-    }
-
-    revalidatePath("/post");
-    revalidatePath(`/post/${postId}`);
-    return { success: true };
-  } catch (err: unknown) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Erreur serveur",
+  // On effectue l'opération en séparant clairement les blocs avec un cast unknown sécurisé
+  if (hasLiked) {
+    const updateDoc = {
+      $pull: { likes: userId } as unknown as Document,
     };
+    await db.collection("posts").updateOne({ _id: objectId }, updateDoc);
+  } else {
+    const updateDoc = {
+      $push: { likes: userId } as unknown as Document,
+    };
+    await db.collection("posts").updateOne({ _id: objectId }, updateDoc);
   }
+
+  revalidatePath("/post");
 }
 
-// Ajouter un commentaire
-export async function addComment(
-  postId: string,
-  content: string,
-): Promise<ActionResult> {
-  try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || !session.user)
-      return { success: false, error: "Non connecté." };
-    if (!content.trim()) return { success: false, error: "Commentaire vide." };
+export async function addComment(postId: string, content: string) {
+  if (!ObjectId.isValid(postId) || !content.trim()) return;
 
-    if (!ObjectId.isValid(postId))
-      return { success: false, error: "ID invalide." };
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) throw new Error("Non autorisé");
 
-    const client = await clientPromise;
-    const db = client.db();
+  const client = await clientPromise;
+  const db = client.db();
 
-    const newComment = {
-      id: new ObjectId().toString(),
-      authorId: session.user.id,
-      authorName: session.user.name || "Utilisateur",
-      authorImage: session.user.image || null,
-      content: content.trim(),
-      createdAt: new Date(),
-    };
+  await db.collection("comments").insertOne({
+    postId: new ObjectId(postId),
+    authorId: session.user.id,
+    authorName: session.user.name || "Anonyme",
+    authorImage: session.user.image || undefined,
+    content: content.trim(),
+    likes: [],
+    createdAt: new Date(),
+  });
 
-    await db
-      .collection("posts")
-      .updateOne({ _id: new ObjectId(postId) }, {
-        $push: { comments: newComment },
-      } as Record<string, unknown>);
-
-    revalidatePath(`/post/${postId}`);
-    return { success: true };
-  } catch (err: unknown) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Erreur serveur",
-    };
-  }
+  revalidatePath("/post");
 }
 
-// Supprimer un commentaire
-export async function deleteComment(
-  postId: string,
-  commentId: string,
-): Promise<ActionResult> {
-  try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || !session.user)
-      return { success: false, error: "Non connecté." };
+export async function deleteComment(postId: string, commentId: string) {
+  if (!ObjectId.isValid(postId) || !ObjectId.isValid(commentId)) return;
 
-    if (!ObjectId.isValid(postId))
-      return { success: false, error: "ID invalide." };
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) throw new Error("Non autorisé");
 
-    const client = await clientPromise;
-    const db = client.db();
+  const client = await clientPromise;
+  const db = client.db();
 
-    const post = await db
-      .collection("posts")
-      .findOne({ _id: new ObjectId(postId) });
-    if (!post) return { success: false, error: "Post introuvable." };
+  const comment = await db
+    .collection("comments")
+    .findOne({ _id: new ObjectId(commentId) });
+  const post = await db
+    .collection("posts")
+    .findOne({ _id: new ObjectId(postId) });
 
-    const comments = Array.isArray(post.comments) ? post.comments : [];
-    const comment = comments.find(
-      (c: { id: string; authorId: string }) => c.id === commentId,
-    );
+  if (!comment || !post) return;
 
-    if (!comment) return { success: false, error: "Commentaire introuvable." };
-
-    if (
-      comment.authorId !== session.user.id &&
-      post.authorId !== session.user.id
-    ) {
-      return { success: false, error: "Action non autorisée." };
-    }
-
-    await db
-      .collection("posts")
-      .updateOne({ _id: new ObjectId(postId) }, {
-        $pull: { comments: { id: commentId } },
-      } as Record<string, unknown>);
-
-    revalidatePath(`/post/${postId}`);
-    return { success: true };
-  } catch (err: unknown) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Erreur serveur",
-    };
+  if (
+    comment.authorId !== session.user.id &&
+    post.authorId !== session.user.id
+  ) {
+    throw new Error("Action non autorisée");
   }
+
+  await db.collection("comments").deleteOne({ _id: new ObjectId(commentId) });
+
+  revalidatePath("/post");
 }

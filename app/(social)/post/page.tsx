@@ -5,22 +5,25 @@ import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PostCard } from "@/components/posts/post-card";
+import { Post, Comment } from "@/types";
 
-interface Post {
+interface FeedPost extends Omit<Post, "_id"> {
   _id: string;
-  content: string;
   imageUrl?: string;
-  authorId: string;
-  authorName: string;
-  authorUsername?: string;
-  authorImage?: string;
-  likes: string[];
-  views: number;
-  commentsCount: number;
-  createdAt: string;
 }
 
-async function getPosts(): Promise<Post[]> {
+interface FeedComment extends Omit<Comment, "_id" | "postId"> {
+  _id: string;
+  postId: string;
+}
+
+interface FeedData {
+  post: FeedPost;
+  comments: FeedComment[];
+  commentsCount: number;
+}
+
+async function getFeedData(): Promise<FeedData[]> {
   try {
     const client = await clientPromise;
     const db = client.db();
@@ -30,21 +33,49 @@ async function getPosts(): Promise<Post[]> {
       .sort({ createdAt: -1 })
       .toArray();
 
-    return rawPosts.map((p) => ({
-      _id: p._id.toString(),
-      content: p.content,
-      imageUrl: p.imageUrl || undefined,
-      authorId: p.authorId,
-      authorName: p.authorName || "Anonyme",
-      authorUsername: p.authorUsername || undefined,
-      authorImage: p.authorImage || undefined,
-      likes: Array.isArray(p.likes) ? p.likes : [],
-      views: typeof p.views === "number" ? p.views : 0,
-      commentsCount: Array.isArray(p.comments) ? p.comments.length : 0,
-      createdAt: p.createdAt
-        ? new Date(p.createdAt).toISOString()
-        : new Date().toISOString(),
-    }));
+    return Promise.all(
+      rawPosts.map(async (p) => {
+        const commentDocs = await db
+          .collection("comments")
+          .find({ postId: p._id })
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        const comments: FeedComment[] = commentDocs.map((c) => ({
+          _id: c._id.toString(),
+          postId: c.postId.toString(),
+          authorId: c.authorId,
+          authorName: c.authorName || "Anonyme",
+          authorImage: c.authorImage || undefined,
+          content: c.content,
+          likes: Array.isArray(c.likes) ? c.likes : [],
+          createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
+        }));
+
+        const imagesList = Array.isArray(p.images) ? p.images : [];
+
+        const post: FeedPost = {
+          _id: p._id.toString(),
+          title: p.title || "",
+          content: p.content,
+          destination: p.destination || "",
+          imageUrl:
+            p.imageUrl || (imagesList.length > 0 ? imagesList[0] : undefined),
+          images: imagesList,
+          authorId: p.authorId,
+          authorName: p.authorName || "Anonyme",
+          authorImage: p.authorImage || undefined,
+          likes: Array.isArray(p.likes) ? p.likes : [],
+          createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
+        };
+
+        return {
+          post,
+          comments,
+          commentsCount: comments.length,
+        };
+      }),
+    );
   } catch {
     return [];
   }
@@ -52,13 +83,12 @@ async function getPosts(): Promise<Post[]> {
 
 async function PostsList() {
   await connection();
-  const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList });
+  const session = await auth.api.getSession({ headers: await headers() });
   const currentUserId = session?.user?.id;
 
-  const posts = await getPosts();
+  const feedData = await getFeedData();
 
-  if (posts.length === 0) {
+  if (feedData.length === 0) {
     return (
       <div className="text-center py-12 bg-white rounded-xl border border-gray-100 shadow-sm">
         <p className="text-gray-500">
@@ -70,12 +100,13 @@ async function PostsList() {
 
   return (
     <div className="space-y-6">
-      {posts.map((post) => (
+      {feedData.map(({ post, comments, commentsCount }) => (
         <PostCard
           key={post._id}
           post={post}
+          comments={comments}
+          commentsCount={commentsCount}
           currentUserId={currentUserId}
-          isDetailView={false}
         />
       ))}
     </div>

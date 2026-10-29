@@ -60,17 +60,26 @@ export default function NewPostPage() {
 
       if (!result.success) {
         toast.error(result.error || "Erreur lors de la publication.");
-        setLoading(false);
         return;
       }
 
+      // Réinitialisation des états locaux
+      setContent("");
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
       toast.success("Publication créée avec succès !");
+
+      // Utilisation conforme de useRouter
       router.push("/post");
       router.refresh();
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Une erreur est survenue.";
       toast.error(msg);
+    } finally {
+      // Garantit que le bouton se débloque quoi qu'il arrive (succès ou erreur)
       setLoading(false);
     }
   };
