@@ -10,7 +10,7 @@ interface PostPayload {
   title?: string;
   content?: string;
   destination?: string;
-  imageUrl?: string;
+  images?: string[];
 }
 
 type CreatePostInput = FormData | PostPayload;
@@ -25,19 +25,19 @@ export async function createPost(input: CreatePostInput) {
     let title = "";
     let content = "";
     let destination = "";
-    let imageUrl = "";
+    let images: string[] = [];
 
-    // Utilisation de "instanceof FormData" pour un narrowing strict et typé par TypeScript
     if (input instanceof FormData) {
       title = input.get("title")?.toString() || "";
       content = input.get("content")?.toString() || "";
       destination = input.get("destination")?.toString() || "";
-      imageUrl = input.get("imageUrl")?.toString() || "";
+      const singleImage = input.get("imageUrl")?.toString();
+      images = singleImage ? [singleImage] : [];
     } else {
       title = input.title || "";
       content = input.content || "";
       destination = input.destination || "";
-      imageUrl = input.imageUrl || "";
+      images = input.images || [];
     }
 
     const client = await clientPromise;
@@ -50,7 +50,7 @@ export async function createPost(input: CreatePostInput) {
       title,
       content,
       destination,
-      images: imageUrl ? [imageUrl] : [],
+      images, // Enregistrement direct du tableau d'images dans MongoDB
       likes: [],
       createdAt: new Date(),
     });

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { deletePost } from "@/actions/post";
 import { Post } from "@/types";
-import { PostImage } from "./post-image";
+import PostImage from "./post-image";
 import { PostLikes } from "./post-likes";
 import { PostCommentsModal } from "@/components/comments/post-comments-modal"; // <-- Import depuis le dossier comments
 import {
@@ -124,7 +124,7 @@ export function PostCard({
         </p>
       )}
 
-      <PostImage imageUrl={post.imageUrl || post.images?.[0]} />
+      <PostImage images={post.images} />
 
       <div className="flex items-center gap-6 text-xs text-gray-500 pt-2 border-t border-gray-50">
         <PostLikes

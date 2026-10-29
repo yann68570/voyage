@@ -6,21 +6,33 @@ import { createPost } from "@/actions/post";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Image from "next/image";
+import { X, Plus } from "lucide-react";
 
 export default function NewPostPage() {
   const router = useRouter();
   const [content, setContent] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    // Limiter par exemple à 10 images max
+    const newFiles = [...selectedFiles, ...files].slice(0, 10);
+    setSelectedFiles(newFiles);
+
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(newPreviews);
+  };
+
+  const removeImage = (index: number) => {
+    const updatedFiles = selectedFiles.filter((_, i) => i !== index);
+    const updatedPreviews = previewUrls.filter((_, i) => i !== index);
+    setSelectedFiles(updatedFiles);
+    setPreviewUrls(updatedPreviews);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,11 +40,12 @@ export default function NewPostPage() {
     setLoading(true);
 
     try {
-      let imageUrl = "";
+      const uploadedImageUrls: string[] = [];
 
-      if (selectedFile) {
+      // Upload séquentiel de chaque image vers Cloudinary
+      for (const file of selectedFiles) {
         const formData = new FormData();
-        formData.append("file", selectedFile);
+        formData.append("file", file);
         formData.append(
           "upload_preset",
           process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!,
@@ -47,15 +60,15 @@ export default function NewPostPage() {
         );
 
         const cloudinaryData = await cloudinaryRes.json();
-        if (!cloudinaryData.secure_url) {
-          throw new Error("Échec de l'upload de l'image sur Cloudinary");
+        if (cloudinaryData.secure_url) {
+          uploadedImageUrls.push(cloudinaryData.secure_url);
         }
-        imageUrl = cloudinaryData.secure_url;
       }
 
+      // Envoi du tableau d'images à l'action serveur synchronisée
       const result = await createPost({
         content,
-        imageUrl,
+        images: uploadedImageUrls,
       });
 
       if (!result.success) {
@@ -65,13 +78,11 @@ export default function NewPostPage() {
 
       // Réinitialisation des états locaux
       setContent("");
-      setSelectedFile(null);
-      setPreviewUrl(null);
+      setSelectedFiles([]);
+      setPreviewUrls([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       toast.success("Publication créée avec succès !");
-
-      // Utilisation conforme de useRouter
       router.push("/post");
       router.refresh();
     } catch (err: unknown) {
@@ -79,7 +90,6 @@ export default function NewPostPage() {
         err instanceof Error ? err.message : "Une erreur est survenue.";
       toast.error(msg);
     } finally {
-      // Garantit que le bouton se débloque quoi qu'il arrive (succès ou erreur)
       setLoading(false);
     }
   };
@@ -109,34 +119,48 @@ export default function NewPostPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Image (optionnelle)
+            Images (optionnelles)
           </label>
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
             accept="image/*"
+            multiple // Autorise la sélection multiple
             className="hidden"
           />
 
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 transition-colors"
-          >
-            {previewUrl ? (
-              <div className="relative w-full h-48 rounded-lg overflow-hidden">
+          {/* Grille d'aperçu type Instagram */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {previewUrls.map((url, index) => (
+              <div
+                key={index}
+                className="relative h-28 rounded-lg overflow-hidden border border-gray-200 group"
+              >
                 <Image
-                  src={previewUrl}
-                  alt="Aperçu"
+                  src={url}
+                  alt={`Aperçu ${index}`}
                   fill
                   className="object-cover"
                 />
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-opacity"
+                >
+                  <X size={14} />
+                </button>
               </div>
-            ) : (
-              <p className="text-sm text-gray-500 py-6">
-                Cliquez pour ajouter une image
-              </p>
-            )}
+            ))}
+
+            {/* Bouton d'ajout */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-200 rounded-lg h-28 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors text-gray-400 hover:text-blue-500"
+            >
+              <Plus size={24} />
+              <span className="text-xs mt-1">Ajouter</span>
+            </div>
           </div>
         </div>
 
