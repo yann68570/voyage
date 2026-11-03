@@ -4,8 +4,9 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { Suspense } from "react";
-import { PostCard } from "@/components/posts/post-card";
+
 import { Post, Comment } from "@/types";
+import { PostCard } from "@/components/posts/post-card";
 
 interface FeedPost extends Omit<Post, "_id"> {
   _id: string;
@@ -90,8 +91,8 @@ async function PostsList() {
 
   if (feedData.length === 0) {
     return (
-      <div className="text-center py-12 bg-white rounded-xl border border-gray-100 shadow-sm">
-        <p className="text-gray-500">
+      <div className="text-center py-12 bg-white rounded-xl border border-gray-100 shadow-sm mx-3 sm:mx-0">
+        <p className="text-gray-500 text-sm sm:text-base px-4">
           Aucun post pour le moment. Soyez le premier à publier !
         </p>
       </div>
@@ -99,7 +100,7 @@ async function PostsList() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {feedData.map(({ post, comments, commentsCount }) => (
         <PostCard
           key={post._id}
@@ -115,14 +116,14 @@ async function PostsList() {
 
 export default function PostsPage() {
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
+    <div className="w-full max-w-xl sm:max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           Fil d&apos;actualité
         </h1>
         <Link
           href="/post/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          className="px-3.5 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-700 transition-colors shrink-0"
         >
           Créer un post
         </Link>
@@ -130,7 +131,7 @@ export default function PostsPage() {
 
       <Suspense
         fallback={
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-gray-400 text-sm">
             Chargement du fil...
           </div>
         }

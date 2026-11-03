@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const { data: session, isPending } = useSession();
@@ -199,6 +200,7 @@ function SettingsForm({
 
   return (
     <div className="max-w-xl mx-auto p-6">
+      <Link href="/post">Retour</Link>
       <h1 className="text-2xl font-bold mb-6">Paramètres du profil</h1>
 
       <form onSubmit={handleUpdate} className="space-y-6">

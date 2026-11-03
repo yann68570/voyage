@@ -68,24 +68,37 @@ export async function createPost(input: CreatePostInput) {
   }
 }
 
-export async function deletePost(postId: string) {
-  if (!ObjectId.isValid(postId)) return;
+export async function deletePost(
+  postId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!ObjectId.isValid(postId)) {
+      return { success: false, error: "ID de post invalide" };
+    }
 
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error("Non autorisé");
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) {
+      return { success: false, error: "Non autorisé" };
+    }
 
-  const client = await clientPromise;
-  const db = client.db();
-  const objectId = new ObjectId(postId);
+    const client = await clientPromise;
+    const db = client.db();
+    const objectId = new ObjectId(postId);
 
-  const post = await db.collection("posts").findOne({ _id: objectId });
-  if (!post || post.authorId !== session.user.id)
-    throw new Error("Action non autorisée");
+    const post = await db.collection("posts").findOne({ _id: objectId });
+    if (!post || post.authorId !== session.user.id) {
+      return { success: false, error: "Action non autorisée" };
+    }
 
-  await db.collection("posts").deleteOne({ _id: objectId });
-  await db.collection("comments").deleteMany({ postId: objectId });
+    await db.collection("posts").deleteOne({ _id: objectId });
+    await db.collection("comments").deleteMany({ postId: objectId });
 
-  revalidatePath("/post");
+    revalidatePath("/post");
+    return { success: true };
+  } catch (error) {
+    console.error("Erreur suppression post:", error);
+    return { success: false, error: "Erreur serveur lors de la suppression" };
+  }
 }
 
 export async function toggleLike(postId: string) {
