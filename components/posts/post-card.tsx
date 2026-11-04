@@ -47,50 +47,58 @@ export function PostCard({
   const isAuthor = currentUserId === post.authorId;
 
   return (
-    <article className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden p-3.5 sm:p-5 space-y-3 sm:space-y-4">
+    <article className="bg-white/90 backdrop-blur-md rounded-2xl border border-emerald-100/80 shadow-md shadow-emerald-500/5 overflow-hidden p-4 sm:p-6 space-y-4 transition-all hover:shadow-lg hover:shadow-emerald-500/10">
       {/* En-tête de l'auteur */}
-      <div className="flex items-center space-x-3">
-        <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200 shrink-0">
-          <Image
-            src={post.authorImage || "/default-avatar.png"}
-            alt={post.authorName}
-            fill
-            className="object-cover"
-          />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden bg-emerald-50 border-2 border-emerald-200 shrink-0 shadow-sm">
+            <Image
+              src={post.authorImage || "/default-avatar.png"}
+              alt={post.authorName}
+              fill
+              className="object-cover"
+            />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
+              {post.authorName}
+            </h3>
+            {post.destination && (
+              <p className="text-xs text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+                <span>📍</span> {post.destination}
+              </p>
+            )}
+            <span className="text-[11px] sm:text-xs text-gray-400 font-medium">
+              {formattedDate}
+            </span>
+          </div>
         </div>
-        <div>
-          <h3 className="text-sm sm:text-base font-semibold text-gray-900 leading-tight">
-            {post.authorName}
-          </h3>
-          {post.destination && (
-            <p className="text-xs text-blue-600 font-medium">
-              📍 {post.destination}
-            </p>
-          )}
-          <span className="text-[11px] sm:text-xs text-gray-400">
-            {formattedDate}
-          </span>
-        </div>
+
+        {/* Bouton de suppression aligné proprement à droite */}
         {isAuthor && <DeletePostButton postId={post._id} />}
       </div>
 
       {/* Contenu textuel */}
-      {post.title && (
-        <h2 className="text-base sm:text-lg font-bold text-gray-900">
-          {post.title}
-        </h2>
-      )}
-      <p className="text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-        {post.content}
-      </p>
+      <div className="space-y-1.5">
+        {post.title && (
+          <h2 className="text-base sm:text-lg font-extrabold text-gray-900 tracking-tight">
+            {post.title}
+          </h2>
+        )}
+        <p className="text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line font-normal">
+          {post.content}
+        </p>
+      </div>
 
       {/* Carrousel d'images tactile */}
       {post.images && post.images.length > 0 && (
-        <PostImages images={post.images} />
+        <div className="rounded-xl overflow-hidden border border-emerald-50">
+          <PostImages images={post.images} />
+        </div>
       )}
 
       {/* Barre d'actions (Likes et Commentaires) */}
-      <div className="flex items-center space-x-6 pt-2 border-t border-gray-50">
+      <div className="flex items-center space-x-6 pt-3 border-t border-emerald-50">
         <PostLikes
           postId={post._id}
           likes={post.likes || []}
@@ -99,7 +107,7 @@ export function PostCard({
         <PostCommentsModal
           postId={post._id}
           postAuthorId={post.authorId}
-          initialComments={comments} // ou comments={comments} selon ton choix
+          initialComments={comments}
           commentsCount={commentsCount}
           currentUserId={currentUserId}
         />

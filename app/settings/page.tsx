@@ -8,20 +8,34 @@ import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import { toast } from "sonner";
 import Link from "next/link";
+import { Settings, ArrowLeft, Camera, Sparkles } from "lucide-react";
 
 export default function SettingsPage() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
 
   if (isPending) {
-    return <p className="text-center py-10">Chargement des paramètres...</p>;
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <p className="text-sm font-medium text-emerald-600 animate-pulse">
+          Chargement des paramètres...
+        </p>
+      </div>
+    );
   }
 
   if (!session) {
     return (
-      <p className="text-center py-10">
-        Veuillez vous connecter pour accéder aux paramètres.
-      </p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 space-y-3">
+        <p className="text-sm text-gray-500">
+          Veuillez vous connecter pour accéder aux paramètres.
+        </p>
+        <Link href="/signin">
+          <Button className="bg-linear-to-r from-emerald-600 to-cyan-500 text-white rounded-xl">
+            Se connecter
+          </Button>
+        </Link>
+      </div>
     );
   }
 
@@ -157,7 +171,6 @@ function SettingsForm({
 
       const fullUnifiedName = `${firstName} ${lastNameToSubmit}`.trim();
 
-      // On prépare l'objet de mise à jour de base
       const updateData: {
         name: string;
         firstName: string;
@@ -169,8 +182,6 @@ function SettingsForm({
         lastName: lastNameToSubmit,
       };
 
-      // ON N'ENVOIE LE PSEUDO QUE S'IL EST REMPLI ET VALIDE
-      // (Si l'utilisateur l'a effacé, on ne l'inclut pas pour éviter l'erreur "Username is too short")
       if (usernameToSubmit.length > 0) {
         updateData.username = usernameToSubmit;
       }
@@ -199,11 +210,38 @@ function SettingsForm({
   const currentAvatar = previewUrl || session.user.image;
 
   return (
-    <div className="max-w-xl mx-auto p-6">
-      <Link href="/post">Retour</Link>
-      <h1 className="text-2xl font-bold mb-6">Paramètres du profil</h1>
+    <div className="w-full max-w-xl sm:max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-5 sm:space-y-7">
+      {/* En-tête */}
+      <div className="flex items-center justify-between pb-2 border-b border-emerald-100/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-linear-to-br from-emerald-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+            <Settings className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-gray-900">
+              Paramètres du profil
+            </h1>
+            <p className="text-xs text-gray-500 hidden sm:block">
+              Personnalisez votre identité sur Best-Voyage
+            </p>
+          </div>
+        </div>
 
-      <form onSubmit={handleUpdate} className="space-y-6">
+        <Link
+          href="/post"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Retour au fil</span>
+        </Link>
+      </div>
+
+      {/* Formulaire principal */}
+      <form
+        onSubmit={handleUpdate}
+        className="space-y-6 bg-white/90 backdrop-blur-md p-4 sm:p-7 rounded-2xl shadow-xl shadow-emerald-500/5 border border-emerald-100/80"
+      >
+        {/* Gestion de l'avatar */}
         <div className="flex flex-col items-center">
           <input
             type="file"
@@ -215,92 +253,112 @@ function SettingsForm({
 
           <div
             onClick={() => !loading && fileInputRef.current?.click()}
-            className="relative cursor-pointer group w-24 h-24"
+            className="relative cursor-pointer group w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-2 border-emerald-300 shadow-md shadow-emerald-500/10"
             title="Changer la photo de profil"
           >
             {currentAvatar ? (
               <Image
                 src={currentAvatar}
                 alt="Avatar de l'utilisateur"
-                width={96}
-                height={96}
+                fill
                 priority
-                className="rounded-full object-cover w-24 h-24 aspect-square transition-opacity group-hover:opacity-75"
+                className="object-cover transition-transform group-hover:scale-105 duration-300"
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 aspect-square transition-opacity group-hover:opacity-75">
+              <div className="w-full h-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-2xl">
                 {firstName?.[0] || session.user.name?.[0] || "?"}
               </div>
             )}
 
-            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-medium">
-              Modifier
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-semibold gap-1">
+              <Camera className="w-5 h-5" />
+              <span>Modifier</span>
             </div>
           </div>
+
           {selectedFile && (
-            <p className="text-xs text-amber-600 mt-2">
+            <p className="text-xs text-emerald-600 font-medium mt-2 flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5" />
               Nouvelle image sélectionnée (cliquez sur Enregistrer pour valider)
             </p>
           )}
         </div>
 
-        <div>
-          <label className="text-sm text-gray-500">Email</label>
-          <div className="flex items-center gap-3 mt-1">
-            <p className="font-medium text-gray-800">{session.user.email}</p>
+        {/* Champs d'information */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+              E-mail
+            </label>
+            <div className="px-3.5 py-2.5 border border-gray-200 rounded-xl bg-gray-50/50 text-sm font-medium text-gray-600">
+              {session.user.email}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+              Prénom
+            </label>
+            <div className="px-3.5 py-2.5 border border-gray-200 rounded-xl bg-gray-50/50 text-sm font-medium text-gray-600">
+              {firstName || "Non renseigné"}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+              Nom
+            </label>
+            <Input
+              type="text"
+              value={lastName}
+              placeholder="Votre nom"
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus-visible:ring-2 focus-visible:ring-emerald-500 bg-gray-50/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+              Pseudo unique (@){" "}
+              <span className="text-gray-400 text-xs font-normal">
+                (Optionnel)
+              </span>
+            </label>
+            <Input
+              type="text"
+              value={username}
+              placeholder="Votre pseudo (facultatif)"
+              onChange={(e) => {
+                setUsername(e.target.value);
+                checkUsernameAvailability(e.target.value);
+              }}
+              className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus-visible:ring-2 focus-visible:ring-emerald-500 bg-gray-50/50"
+            />
+            {usernameStatus && (
+              <p
+                className={`text-xs mt-1.5 font-medium ${
+                  usernameStatus.includes("✅")
+                    ? "text-emerald-600"
+                    : usernameStatus.includes("❌")
+                      ? "text-red-500"
+                      : "text-gray-500"
+                }`}
+              >
+                {usernameStatus}
+              </p>
+            )}
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Prénom</label>
-          <div className="p-2 border rounded-md bg-muted text-gray-600 text-sm">
-            {firstName || "Non renseigné"}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Nom</label>
-          <Input
-            type="text"
-            value={lastName}
-            placeholder="Votre nom"
-            onChange={(e) => setLastName(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Pseudo unique (@){" "}
-            <span className="text-gray-400 text-xs font-normal">
-              (Optionnel)
-            </span>
-          </label>
-          <Input
-            type="text"
-            value={username}
-            placeholder="Votre pseudo (facultatif)"
-            onChange={(e) => {
-              setUsername(e.target.value);
-              checkUsernameAvailability(e.target.value);
-            }}
-          />
-          {usernameStatus && (
-            <p
-              className={`text-xs mt-1 ${
-                usernameStatus.includes("✅")
-                  ? "text-green-600"
-                  : usernameStatus.includes("❌")
-                    ? "text-red-500"
-                    : "text-gray-500"
-              }`}
-            >
-              {usernameStatus}
-            </p>
-          )}
-        </div>
-
-        <Button type="submit" disabled={loading}>
-          {loading ? "Enregistrement..." : "Enregistrer les modifications"}
+        {/* Bouton de soumission */}
+        <Button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 bg-linear-to-r from-emerald-600 to-cyan-500 hover:from-emerald-700 hover:to-cyan-600 text-white font-semibold rounded-xl shadow-md shadow-emerald-500/20 transition-all duration-200 cursor-pointer text-sm sm:text-base mt-2"
+        >
+          {loading
+            ? "Enregistrement en cours..."
+            : "Enregistrer les modifications"}
         </Button>
       </form>
     </div>

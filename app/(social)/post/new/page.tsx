@@ -6,7 +6,7 @@ import { createPost } from "@/actions/post";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Image from "next/image";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Sparkles, ImagePlus } from "lucide-react";
 
 export default function NewPostPage() {
   const router = useRouter();
@@ -36,6 +36,13 @@ export default function NewPostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!content.trim() && selectedFiles.length === 0) {
+      toast.error(
+        "Veuillez ajouter du texte ou une image à votre publication.",
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -91,31 +98,44 @@ export default function NewPostPage() {
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-        Créer une nouvelle publication
-      </h1>
+    <div className="w-full max-w-xl sm:max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-5 sm:space-y-7">
+      {/* En-tête de la page */}
+      <div className="flex items-center gap-2.5 pb-2 border-b border-emerald-100/60">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-linear-to-br from-emerald-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+          <Sparkles className="w-5 h-5" />
+        </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-gray-900">
+            Créer une nouvelle publication
+          </h1>
+          <p className="text-xs text-gray-500 hidden sm:block">
+            Partagez vos souvenirs de voyage et vos plus beaux paysages
+          </p>
+        </div>
+      </div>
 
+      {/* Formulaire */}
       <form
         onSubmit={handleSubmit}
-        className="space-y-4 bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100"
+        className="space-y-5 bg-white/90 backdrop-blur-md p-4 sm:p-7 rounded-2xl shadow-xl shadow-emerald-500/5 border border-emerald-100/80"
       >
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description
+          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 items-center gap-1.5">
+            <span>Description de votre voyage</span>
           </label>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Partagez votre voyage ou vos pensées..."
-            rows={4}
-            className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none text-gray-800"
+            placeholder="Racontez votre évasion, vos découvertes ou partagez vos conseils..."
+            rows={5}
+            className="w-full p-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm resize-none text-gray-800 bg-gray-50/50 transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Images (optionnelles)
+          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 items-center gap-1.5">
+            <ImagePlus className="w-4 h-4 text-emerald-600" />
+            <span>Photos souvenirs (optionnelles)</span>
           </label>
           <input
             type="file"
@@ -130,18 +150,19 @@ export default function NewPostPage() {
             {previewUrls.map((url, index) => (
               <div
                 key={index}
-                className="relative h-24 sm:h-32 rounded-lg overflow-hidden border border-gray-200 group"
+                className="relative h-24 sm:h-32 rounded-xl overflow-hidden border border-emerald-100 group shadow-sm bg-gray-100"
               >
                 <Image
                   src={url}
                   alt={`Aperçu ${index}`}
                   fill
-                  className="object-cover"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <button
                   type="button"
                   onClick={() => removeImage(index)}
-                  className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black text-white rounded-full p-1.5 transition-colors"
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors cursor-pointer shadow-md"
+                  title="Supprimer l'image"
                 >
                   <X size={14} />
                 </button>
@@ -150,16 +171,27 @@ export default function NewPostPage() {
 
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-200 rounded-lg h-24 sm:h-32 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors text-gray-400 hover:text-blue-500 bg-gray-50"
+              className="border-2 border-dashed border-emerald-200 rounded-xl h-24 sm:h-32 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 transition-all text-emerald-600 hover:text-emerald-700 bg-emerald-50/40 hover:bg-emerald-50/80 group"
             >
-              <Plus size={24} />
-              <span className="text-xs mt-1 font-medium">Ajouter</span>
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus size={18} />
+              </div>
+              <span className="text-xs mt-1.5 font-semibold text-emerald-700">
+                Ajouter
+              </span>
             </div>
           </div>
+          <p className="text-[11px] text-gray-400">
+            Vous pouvez ajouter jusqu&apos;à 10 photos.
+          </p>
         </div>
 
-        <Button type="submit" disabled={loading} className="w-full py-2.5">
-          {loading ? "Publication en cours..." : "Publier"}
+        <Button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 bg-linear-to-r from-emerald-600 to-cyan-500 hover:from-emerald-700 hover:to-cyan-600 text-white font-semibold rounded-xl shadow-md shadow-emerald-500/20 transition-all duration-200 cursor-pointer text-sm sm:text-base mt-2"
+        >
+          {loading ? "Publication en cours..." : "Publier l'aventure"}
         </Button>
       </form>
     </div>

@@ -5,6 +5,7 @@ import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Compass } from "lucide-react";
 import GoogleSignInButton from "./google-signin-button";
 
 interface AuthFormProps {
@@ -78,25 +79,38 @@ export function AuthForm({ type }: AuthFormProps) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-xl shadow-md border border-gray-100">
-      <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-        {type === "sign-in" ? "Connexion à Voyage" : "Créer un compte"}
-      </h2>
+    <div className="w-full max-w-md mx-auto p-6 sm:p-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl shadow-emerald-500/5 border border-emerald-100/80">
+      {/* En-tête avec logo thématique */}
+      <div className="flex flex-col items-center mb-6 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-emerald-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 mb-3">
+          <Compass className="w-7 h-7" />
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
+          {type === "sign-in" ? "Bon retour !" : "Rejoignez Best-Voyage"}
+        </h2>
+        <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          {type === "sign-in"
+            ? "Connectez-vous pour retrouver vos carnets de route"
+            : "Partagez vos plus beaux souvenirs d'évasion avec la communauté"}
+        </p>
+      </div>
 
       <GoogleSignInButton />
 
-      <div className="relative flex py-2 items-center">
-        <div className="grow border-t border-gray-200"></div>
-        <span className="shrink mx-4 text-gray-400 text-xs uppercase">ou</span>
-        <div className="grow border-t border-gray-200"></div>
+      <div className="relative flex py-3 items-center">
+        <div className="grow border-t border-emerald-100"></div>
+        <span className="shrink mx-4 text-gray-400 text-xs uppercase tracking-wider font-medium">
+          ou avec un email
+        </span>
+        <div className="grow border-t border-emerald-100"></div>
       </div>
 
       {/* Formulaire Email / Mot de passe */}
-      <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+      <form onSubmit={handleSubmit} className="space-y-4 mt-2">
         {type === "sign-up" && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                 Prénom
               </label>
               <input
@@ -104,12 +118,12 @@ export function AuthForm({ type }: AuthFormProps) {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all bg-gray-50/50"
                 placeholder="Jean"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                 Nom
               </label>
               <input
@@ -117,7 +131,7 @@ export function AuthForm({ type }: AuthFormProps) {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all bg-gray-50/50"
                 placeholder="Dupont"
               />
             </div>
@@ -125,7 +139,7 @@ export function AuthForm({ type }: AuthFormProps) {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
             E-mail
           </label>
           <input
@@ -133,13 +147,13 @@ export function AuthForm({ type }: AuthFormProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all bg-gray-50/50"
             placeholder="votre@email.com"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
             Mot de passe
           </label>
           <input
@@ -147,7 +161,7 @@ export function AuthForm({ type }: AuthFormProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all bg-gray-50/50"
             placeholder="••••••••"
           />
         </div>
@@ -155,24 +169,24 @@ export function AuthForm({ type }: AuthFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+          className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-cyan-500 hover:from-emerald-700 hover:to-cyan-600 text-white font-semibold rounded-xl shadow-md shadow-emerald-500/20 transition-all duration-200 disabled:opacity-50 cursor-pointer text-sm sm:text-base mt-2"
         >
           {loading
             ? "Chargement..."
             : type === "sign-in"
               ? "Se connecter"
-              : "S'inscrire"}
+              : "Créer mon compte"}
         </button>
       </form>
 
       {/* Liens de bascule */}
-      <div className="text-center mt-4 text-sm text-gray-600">
+      <div className="text-center mt-6 text-xs sm:text-sm text-gray-600">
         {type === "sign-in" ? (
           <p>
             Pas encore de compte ?{" "}
             <Link
               href="/signup"
-              className="text-blue-600 font-medium hover:underline"
+              className="text-emerald-600 font-semibold hover:text-emerald-700 hover:underline"
             >
               S&apos;inscrire
             </Link>
@@ -182,7 +196,7 @@ export function AuthForm({ type }: AuthFormProps) {
             Déjà un compte ?{" "}
             <Link
               href="/signin"
-              className="text-blue-600 font-medium hover:underline"
+              className="text-emerald-600 font-semibold hover:text-emerald-700 hover:underline"
             >
               Se connecter
             </Link>

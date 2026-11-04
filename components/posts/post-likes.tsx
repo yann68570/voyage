@@ -20,18 +20,23 @@ export function PostLikes({ postId, likes, currentUserId }: PostLikesProps) {
     <form action={handleLike}>
       <button
         type="submit"
-        className={`flex items-center gap-1.5 transition-all text-xs sm:text-sm bg-transparent border-none cursor-pointer p-0 select-none ${
+        className={`group flex items-center gap-2 transition-all text-xs sm:text-sm bg-transparent border-none cursor-pointer py-1.5 px-2.5 rounded-xl select-none ${
           hasLiked
-            ? "text-red-500 font-semibold"
-            : "text-gray-500 hover:text-red-500"
+            ? "text-red-500 font-bold bg-red-50/60"
+            : "text-gray-500 hover:text-red-500 hover:bg-emerald-50/50"
         }`}
+        title={hasLiked ? "Je n'aime plus" : "J'aime"}
       >
-        <Heart
-          className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform active:scale-125 ${
-            hasLiked ? "fill-red-500 text-red-500" : "text-gray-500"
-          }`}
-        />
-        <span>{likes.length}</span>
+        <div className="p-1 rounded-full transition-transform group-hover:scale-110 active:scale-125">
+          <Heart
+            className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
+              hasLiked
+                ? "fill-red-500 text-red-500 drop-shadow-sm"
+                : "text-gray-400 group-hover:text-red-500"
+            }`}
+          />
+        </div>
+        <span className="font-semibold">{likes.length}</span>
       </button>
     </form>
   );

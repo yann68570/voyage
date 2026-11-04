@@ -1,31 +1,32 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { signOut } from "@/lib/auth-client";
+import { LogOut } from "lucide-react";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function SignOutButton() {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await authClient.signOut({
+    await signOut({
       fetchOptions: {
         onSuccess: () => {
           toast.success("Déconnexion réussie");
           router.push("/signin");
-          router.refresh();
-        },
-        onError: (error) => {
-          toast.error("Erreur lors de la déconnexion : " + error);
         },
       },
     });
   };
 
   return (
-    <Button onClick={handleSignOut} variant="destructive">
-      Se déconnecter
-    </Button>
+    <DropdownMenuItem
+      onClick={handleSignOut}
+      className="flex items-center gap-2.5 text-red-600 hover:text-red-700 focus:bg-red-50 rounded-lg cursor-pointer py-2.5 font-medium w-full"
+    >
+      <LogOut className="w-4 h-4" />
+      <span>Se déconnecter</span>
+    </DropdownMenuItem>
   );
 }
