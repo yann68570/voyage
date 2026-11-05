@@ -81,16 +81,8 @@ export default function Navbar() {
         ) : (
           <div className="flex items-center gap-3">
             <Link href="/signin">
-              <Button
-                variant="ghost"
-                className="text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl font-medium cursor-pointer text-sm"
-              >
-                Se connecter
-              </Button>
-            </Link>
-            <Link href="/signup">
               <Button className="bg-linear-to-r from-emerald-600 to-cyan-500 hover:from-emerald-700 hover:to-cyan-600 text-white rounded-xl px-4 py-2 text-sm shadow-md shadow-emerald-500/20 transition-all duration-200 cursor-pointer">
-                Rejoindre
+                Se connecter
               </Button>
             </Link>
           </div>
